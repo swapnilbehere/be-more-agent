@@ -22,10 +22,9 @@ This project turns a Raspberry Pi into a fully functional, conversational AI age
 ## 🛠️ Hardware Requirements
 
 * **Raspberry Pi 5** (Recommended) or Pi 4 (4GB RAM minimum)
-* USB Microphone (or ReSpeaker HAT)
-* Speaker (3.5mm, USB, or HDMI)
+* USB Microphone & Speaker
 * LCD Screen (DSI or HDMI)
-* Raspberry Pi Camera Module (Optional, for vision features)
+* Raspberry Pi Camera Module
 
 ---
 
@@ -84,10 +83,10 @@ cd be-more-agent
 chmod +x setup.sh
 ./setup.sh
 ```
-*The setup script will create a virtual environment, install dependencies, compile Whisper.cpp, and download default voice models.*
+*The setup script will install system libraries, create necessary folders, download Piper TTS, and set up the Python virtual environment.*
 
 ### 4. Configure the Wake Word
-The setup script downloads a default wake word (e.g., "Hey Jarvis"). To use your own:
+The setup script downloads a default wake word ("Hey Jarvis"). To use your own:
 1. Train a model at [OpenWakeWord](https://github.com/dscripka/openWakeWord).
 2. Place the `.onnx` file in the root folder.
 3. Rename it to `wakeword.onnx`.
@@ -102,7 +101,7 @@ python agent.py
 
 ## 📂 Configuration (`config.json`)
 
-You can modify the hardware behavior and personality in `config.json`. The `setup.sh` script creates this for you, but you can edit it manually:
+You can modify the hardware behavior and personality in `config.json`. The `agent.py` script creates this on the first run if it doesn't exist, but you can create it manually:
 
 ```json
 {
@@ -128,7 +127,7 @@ This software is a generic framework. You can give it a new personality by repla
 
 ## ⚠️ Troubleshooting
 
-* **"No search library found":** If web search fails, ensure you are in the virtual environment and run `pip install duckduckgo-search`.
+* **"No search library found":** If web search fails, ensure you are in the virtual environment and `duckduckgo-search` is installed via pip.
 * **Shutdown Errors:** When you exit the script (Ctrl+C), you might see `Expression 'alsa_snd_pcm_mmap_begin' failed`. **This is normal.** It just means the audio stream was cut off mid-sample. It does not affect the functionality.
 * **Audio Glitches:** If the voice sounds fast or slow, the script attempts to auto-detect sample rates. Ensure your `config.json` points to a valid `.onnx` voice model in the `piper/` folder.
 
