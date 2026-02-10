@@ -1,0 +1,8 @@
+sounddevice
+numpy
+openwakeword
+onnxruntime
+ollama
+duckduckgo-search
+scipy
+pillow
