@@ -1,81 +1,82 @@
 #!/bin/bash
 
-# Define colors for output
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-RED='\033[0;31m'
-NC='\033[0m' # No Color
+# ==============================================================================
+#  Be More Agent - Installer 🤖
+# ==============================================================================
 
-echo -e "${GREEN}🤖 Pi Local Assistant Setup Script${NC}"
+echo "🤖 INITIALIZING INSTALLER..."
 
-# 1. Install System Dependencies (The "Hidden" Requirements)
-echo -e "${YELLOW}[1/6] Installing System Tools (apt)...${NC}"
-sudo apt update
-sudo apt install -y python3-tk libasound2-dev libportaudio2 libatlas-base-dev cmake build-essential
+# 1. System Updates & Dependencies
+echo "[1/5] Updating System & Installing Libraries..."
+sudo apt-get update
+sudo apt-get install -y \
+    python3-pip python3-venv \
+    portaudio19-dev libasound2-dev \
+    git cmake curl \
+    libatlas-base-dev
 
-# 2. Create Folders
-echo -e "${YELLOW}[2/6] Creating Folders...${NC}"
-mkdir -p piper
-mkdir -p sounds/greeting_sounds
-mkdir -p sounds/thinking_sounds
-mkdir -p sounds/ack_sounds
-mkdir -p sounds/error_sounds
-mkdir -p faces/idle
-mkdir -p faces/listening
-mkdir -p faces/thinking
-mkdir -p faces/speaking
-mkdir -p faces/error
-mkdir -p faces/warmup
-
-# 3. Download Piper (Architecture Check)
-echo -e "${YELLOW}[3/6] Setting up Piper TTS...${NC}"
-ARCH=$(uname -m)
-if [ "$ARCH" == "aarch64" ]; then
-    # FIXED: Updated URL to the working 2023.11.14-2 release
-    wget -O piper.tar.gz https://github.com/rhasspy/piper/releases/download/2023.11.14-2/piper_linux_aarch64.tar.gz
-    tar -xvf piper.tar.gz -C .
-    rm piper.tar.gz
-else
-    echo -e "${RED}⚠️  Not on Raspberry Pi (aarch64). Skipping Piper download.${NC}"
+# 2. Virtual Environment Setup
+echo "[2/5] Setting up Python Environment..."
+if [ ! -d "venv" ]; then
+    python3 -m venv venv
 fi
+source venv/bin/activate
 
-# 4. Download Voice Model
-echo -e "${YELLOW}[4/6] Downloading Voice Model...${NC}"
-cd piper
-wget -nc -O en_GB-semaine-medium.onnx https://huggingface.co/rhasspy/piper-voices/resolve/v1.0.0/en/en_GB/semaine/medium/en_GB-semaine-medium.onnx
-wget -nc -O en_GB-semaine-medium.onnx.json https://huggingface.co/rhasspy/piper-voices/resolve/v1.0.0/en/en_GB/semaine/medium/en_GB-semaine-medium.onnx.json
-cd ..
-
-# 4.5 Install Whisper.cpp (Speech-to-Text)
-echo -e "${YELLOW}[4.5/6] Setting up Whisper.cpp...${NC}"
-if [ ! -d "whisper.cpp" ]; then
-    git clone https://github.com/ggerganov/whisper.cpp
-    cd whisper.cpp
-    
-    # Compile it for the Pi
-    echo "Compiling Whisper..."
-    make -j4
-    
-    # Download the small English model
-    echo "Downloading Model..."
-    ./models/download-ggml-model.sh base.en
-    
-    cd ..
-else
-    echo "Whisper.cpp already installed."
-fi
-
-# 5. Install Python Libraries
-echo -e "${YELLOW}[5/6] Installing Python Libraries...${NC}"
+# Install Python requirements
+pip install --upgrade pip
 pip install -r requirements.txt
 
-# 6. Pull AI Models
-echo -e "${YELLOW}[6/6] Checking AI Models...${NC}"
-if command -v ollama &> /dev/null; then
-    ollama pull gemma3:1b
-    ollama pull moondream
+# 3. Download Wake Word Model (OpenWakeWord)
+echo "[3/5] Downloading Wake Word Model..."
+if [ ! -f "wakeword.onnx" ]; then
+    # Downloads a robust pre-trained model. You can replace this URL with your own custom model.
+    # Using 'hey_jarvis' as a reliable default.
+    curl -L -o wakeword.onnx https://github.com/dscripka/openWakeWord/raw/main/openwakeword/resources/models/hey_jarvis_v0.1.onnx
+    echo "✅ Default wake word 'Hey Jarvis' installed. (Rename your own model to wakeword.onnx to override)"
 else
-    echo -e "${RED}❌ Ollama not found. Please install it manually.${NC}"
+    echo "✅ Wake word model found."
 fi
 
-echo -e "${GREEN}✨ Setup Complete! Don't forget to add your 'wakeword.onnx' file!${NC}"
+# 4. Whisper.cpp Setup (Speech-to-Text)
+echo "[4/5] Building Whisper (Ear)..."
+if [ ! -d "whisper.cpp" ]; then
+    git clone https://github.com/ggerganov/whisper.cpp.git
+    cd whisper.cpp
+    # Download the small English model (good balance of speed/accuracy for Pi)
+    bash ./models/download-ggml-model.sh base.en
+    # Compile
+    make
+    cd ..
+else
+    echo "✅ Whisper already installed."
+fi
+
+# 5. Piper Setup (Text-to-Speech)
+echo "[5/5] Setting up Piper (Voice)..."
+if [ ! -d "piper" ]; then
+    # Detect Architecture (64-bit vs 32-bit)
+    ARCH=$(uname -m)
+    if [[ "$ARCH" == "aarch64" ]]; then
+        PIPER_URL="https://github.com/rhasspy/piper/releases/download/v1.2.0/piper_linux_aarch64.tar.gz"
+    else
+        PIPER_URL="https://github.com/rhasspy/piper/releases/download/v1.2.0/piper_linux_armv7l.tar.gz"
+    fi
+    
+    wget -O piper.tar.gz $PIPER_URL
+    tar -xvf piper.tar.gz
+    rm piper.tar.gz
+    
+    # Download a Voice Model (Ryan - Low/Medium quality is fast on Pi)
+    cd piper
+    wget -O en_GB-semaine-medium.onnx https://huggingface.co/rhasspy/piper-voices/resolve/v1.0.0/en/en_GB/semaine/medium/en_GB-semaine-medium.onnx
+    wget -O en_GB-semaine-medium.onnx.json https://huggingface.co/rhasspy/piper-voices/resolve/v1.0.0/en/en_GB/semaine/medium/en_GB-semaine-medium.onnx.json
+    cd ..
+else
+    echo "✅ Piper already installed."
+fi
+
+echo "========================================================"
+echo "🎉 INSTALLATION COMPLETE!"
+echo "   1. Ensure Ollama is running: 'ollama serve'"
+echo "   2. Start the Agent: 'python agent.py'"
+echo "========================================================"
