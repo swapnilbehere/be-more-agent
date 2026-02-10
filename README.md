@@ -23,8 +23,9 @@ This project turns a Raspberry Pi into a fully functional, conversational AI rob
 ## 🛠️ Hardware Requirements
 
 * **Raspberry Pi 5** (Recommended).
-* USB Microphone & Speakers
-* LCD display
+* USB Microphone & Speaker
+* LCD Display
+* Camera module
 
 ---
 
@@ -62,29 +63,52 @@ pi-local-assistant/
 ## 🚀 Installation
 
 ### Option 1: Quick Install (Recommended)
-I provide a setup script that downloads the Piper TTS engine, the default voice model, and installs all Python dependencies.
-
 1.  **Clone the repository:**
     ```bash
     git clone [https://github.com/brenpoly/be-more-agent.git](https://github.com/brenpoly/be-more-agent.git)
-    cd pi-local-assistant
+    cd be-more-agent
     ```
 
-2.  **Run the setup script:**
+2.  **Create & Activate Virtual Environment (Required):**
+    *You must do this to install Python libraries on Raspberry Pi.*
+    ```bash
+    python3 -m venv venv
+    source venv/bin/activate
+    ```
+
+3.  **Run the setup script:**
+    This script downloads the voice models and installs all dependencies into your virtual environment.
     ```bash
     chmod +x setup.sh
     ./setup.sh
     ```
 
-3.  **Add your Character Assets:**
-    * **Wake Word:** Place your `.onnx` wake word model in the root folder and rename it to `wakeword.onnx`.
-    * **Faces:** Add your `.png` image sequences to the `faces/[state]/` subfolders.
-    * **Sounds:** Add your `.wav` sound effects to the `sounds/[category]/` subfolders.
-
 4.  **Run the Agent:**
     ```bash
     python agent.py
     ```
+
+### Option 2: Manual Install
+If you prefer to set it up yourself:
+
+1.  **Install System Deps:**
+    ```bash
+    sudo apt install libasound2-dev portaudio19-dev libportaudio2
+    ```
+
+2.  **Create & Activate Virtual Environment:**
+    ```bash
+    python3 -m venv venv
+    source venv/bin/activate
+    ```
+
+3.  **Install Python Deps:**
+    ```bash
+    pip install sounddevice numpy openwakeword ollama ddgs scipy pillow
+    ```
+
+4.  **Get Piper & Voice Models:**
+    Download the [Piper aarch64 binary](https://github.com/rhasspy/piper/releases) and the [en_GB-semaine-medium.onnx](https://huggingface.co/rhasspy/piper-voices/resolve/v1.0.0/en/en_GB/semaine/medium/en_GB-semaine-medium.onnx) voice model. Extract them into a folder named `piper/` in the root directory.
 
 ### Option 2: Manual Install
 If you prefer to set it up yourself (or aren't on a Raspberry Pi):
