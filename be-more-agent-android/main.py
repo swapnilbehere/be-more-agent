@@ -379,6 +379,9 @@ class AgentScreen(Screen):
         except Exception as e:
             print(f"[INIT] TTS not available: {e}", flush=True)
 
+        # Start TTS worker thread now that the engine is ready
+        threading.Thread(target=self._tts_worker, daemon=True).start()
+
         # Initialize LLM
         self.set_state(BotStates.WARMUP, "Loading AI model...")
         try:
@@ -533,6 +536,7 @@ class AgentScreen(Screen):
             self.thinking_sound_active.clear()
             result = router.execute(action_data)
             self._handle_tool_result(result, text, img_path)
+            self._wait_for_tts()
             self.set_state(BotStates.IDLE, "Ready!")
             return
 
@@ -584,6 +588,7 @@ class AgentScreen(Screen):
                 self.append_text("")
                 self.session_memory.append({"role": "assistant", "content": full_response})
 
+            self._wait_for_tts()
             self.set_state(BotStates.IDLE, "Ready!")
 
         except Exception as e:
@@ -654,13 +659,38 @@ class AgentScreen(Screen):
         self.append_text(f"BOT: {text}")
         self._speak_text(text)
 
+    def _tts_worker(self):
+        """Dedicated thread: drains tts_queue so LLM can keep streaming while speaking."""
+        while True:
+            text = None
+            with self.tts_queue_lock:
+                if self.tts_queue:
+                    text = self.tts_queue.pop(0)
+                    self.tts_active.set()
+            if text:
+                if self.tts:
+                    self.tts.speak(text, wait=True)
+                else:
+                    time.sleep(0.5)
+                self.tts_active.clear()
+            else:
+                time.sleep(0.05)
+
+    def _wait_for_tts(self):
+        """Block until the TTS queue is empty and the current utterance finishes."""
+        while True:
+            if self.interrupted.is_set():
+                break
+            with self.tts_queue_lock:
+                queue_empty = len(self.tts_queue) == 0
+            if queue_empty and not self.tts_active.is_set():
+                break
+            time.sleep(0.1)
+
     def _speak_text(self, text):
-        """Send text to TTS engine."""
-        if self.tts:
-            self.tts.speak(text, wait=True)
-        else:
-            # Placeholder: no TTS yet
-            time.sleep(0.5)
+        """Queue text for the TTS worker — non-blocking, returns immediately."""
+        with self.tts_queue_lock:
+            self.tts_queue.append(text)
 
     def _show_camera_overlay(self, img_path):
         """Show captured image as overlay — mirrors agent.py:336-344."""
