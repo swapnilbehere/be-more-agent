@@ -1,0 +1,13 @@
+{
+    "text_model": "SmolLM2-1.7B-Instruct-Q4_K_M.gguf",
+    "vision_model": "",
+    "chat_memory": true,
+    "system_prompt_extras": "",
+    "temperature": 0.7,
+    "top_k": 40,
+    "top_p": 0.9,
+    "n_threads": 4,
+    "n_ctx": 2048,
+    "model_url": "",
+    "wake_phrase": "hey jarvis"
+}

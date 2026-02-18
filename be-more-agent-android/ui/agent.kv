@@ -1,0 +1,89 @@
+#:kivy 2.3.0
+
+<AgentScreen>:
+    FloatLayout:
+        canvas.before:
+            Color:
+                rgba: 0, 0, 0, 1
+            Rectangle:
+                pos: self.pos
+                size: self.size
+
+        # Face animation background
+        Image:
+            id: face_image
+            source: ''
+            fit_mode: 'fill'
+            size_hint: 1, 1
+            pos_hint: {'center_x': 0.5, 'center_y': 0.5}
+
+        # Camera overlay (hidden by default)
+        Image:
+            id: camera_overlay
+            source: ''
+            size_hint: 0.5, 0.4
+            pos_hint: {'center_x': 0.5, 'center_y': 0.6}
+            opacity: 0
+
+        # Conversation display
+        ScrollView:
+            id: scroll_view
+            size_hint: 0.9, 0.25
+            pos_hint: {'center_x': 0.5, 'y': 0.12}
+            bar_width: 4
+            bar_color: 1, 1, 1, 0.5
+            Label:
+                id: conversation_label
+                text: ''
+                size_hint_y: None
+                height: self.texture_size[1]
+                text_size: self.width, None
+                font_size: '14sp'
+                color: 1, 1, 1, 0.85
+                valign: 'bottom'
+
+        # Status text
+        Label:
+            id: status_label
+            text: 'Initializing...'
+            size_hint: 1, 0.04
+            pos_hint: {'center_x': 0.5, 'y': 0.08}
+            font_size: '12sp'
+            color: 1, 1, 1, 0.6
+
+        # Text input + send (for emulator/debug testing)
+        BoxLayout:
+            orientation: 'horizontal'
+            size_hint: 0.9, None
+            height: dp(44)
+            pos_hint: {'center_x': 0.5, 'y': 0.06}
+            spacing: dp(4)
+            TextInput:
+                id: debug_input
+                hint_text: 'Type here...'
+                multiline: False
+                size_hint_x: 0.75
+                font_size: '14sp'
+                background_color: 0.15, 0.15, 0.15, 1
+                foreground_color: 1, 1, 1, 1
+                on_text_validate: root.on_debug_send()
+            Button:
+                text: 'SEND'
+                size_hint_x: 0.25
+                background_color: 0.2, 0.7, 0.3, 1
+                font_size: '14sp'
+                bold: True
+                on_press: root.on_debug_send()
+
+        # Mic button (circular)
+        Button:
+            id: mic_button
+            text: 'MIC'
+            size_hint: None, None
+            size: dp(72), dp(72)
+            pos_hint: {'center_x': 0.5, 'y': 0.01}
+            background_color: 0.2, 0.6, 1, 1
+            font_size: '16sp'
+            bold: True
+            on_press: root.on_mic_press()
+            on_release: root.on_mic_release()
