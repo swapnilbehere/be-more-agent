@@ -568,9 +568,21 @@ class AgentScreen(Screen):
                 self.append_text(content, newline=False)
 
                 sentence_buffer += content
-                if any(p in content for p in ".!?\n"):
+                should_flush = False
+                if '!' in content or '?' in content:
+                    should_flush = True
+                elif '\n' in content and len(sentence_buffer.strip()) > 3:
+                    # Flush on newline only when buffer has real content,
+                    # so "1.\n" waits for the list item text before speaking.
+                    should_flush = True
+                elif '.' in content:
+                    # Require at least a 2-letter word so "1." / "2." don't
+                    # become their own utterances before the content arrives.
+                    if re.search(r'[a-zA-Z]{2,}', sentence_buffer):
+                        should_flush = True
+                if should_flush:
                     clean = sentence_buffer.strip()
-                    if clean and re.search(r'[a-zA-Z0-9]', clean):
+                    if clean and re.search(r'[a-zA-Z]', clean):
                         self._speak_text(clean)
                     sentence_buffer = ""
 
