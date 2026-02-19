@@ -484,6 +484,10 @@ class AgentScreen(Screen):
             self.sound_player.play_random(SOUND_DIRS['ack'])
 
             self.append_text(f"YOU: {user_text}")
+            # Flush any stale sentences that snuck in during barge-in before
+            # clearing interrupted, so _tts_worker never plays them.
+            with self.tts_queue_lock:
+                self.tts_queue.clear()
             self.interrupted.clear()
 
             self.chat_and_respond(user_text)
@@ -492,8 +496,10 @@ class AgentScreen(Screen):
             print(f"[ERROR] Listen/respond: {e}", flush=True)
             self.set_state(BotStates.ERROR, f"Error: {str(e)[:40]}")
         finally:
-            # Resume wake word service now that the microphone is free
-            if platform == 'android':
+            # Only resume the wake service if we're not in a barge-in.
+            # When interrupted is set, the barge-in thread already owns the
+            # mic — resuming here would yank it away and cause a CLIENT error.
+            if platform == 'android' and not self.interrupted.is_set():
                 print("[STT] Resuming wake service", flush=True)
                 self._resume_wake_service()
 
@@ -596,7 +602,7 @@ class AgentScreen(Screen):
                         should_flush = True
                 if should_flush:
                     clean = sentence_buffer.strip()
-                    if clean and re.search(r'[a-zA-Z]', clean):
+                    if clean and re.search(r'[a-zA-Z]', clean) and not self.interrupted.is_set():
                         self._speak_text(clean)
                     sentence_buffer = ""
 
