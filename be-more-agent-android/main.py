@@ -564,7 +564,8 @@ class AgentScreen(Screen):
             stream = self.llm.chat(messages, stream=True,
                                    temperature=self.config.get('temperature', 0.7),
                                    top_k=self.config.get('top_k', 40),
-                                   top_p=self.config.get('top_p', 0.9))
+                                   top_p=self.config.get('top_p', 0.9),
+                                   max_tokens=self.config.get('max_tokens', 150))
 
             for chunk in stream:
                 if self.interrupted.is_set():
@@ -744,7 +745,7 @@ class AgentScreen(Screen):
         time.sleep(0.5)
         while self.thinking_sound_active.is_set():
             self.sound_player.play_random(SOUND_DIRS['thinking'])
-            for _ in range(50):
+            for _ in range(120):  # 12s between sounds — max 1-2 plays for a 20s wait
                 if not self.thinking_sound_active.is_set():
                     return
                 time.sleep(0.1)

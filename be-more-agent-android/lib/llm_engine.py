@@ -49,7 +49,7 @@ class LLMEngine:
         )
         print("[LLM] Model loaded", flush=True)
 
-    def chat(self, messages, stream=False, temperature=0.7, top_k=40, top_p=0.9):
+    def chat(self, messages, stream=False, temperature=0.7, top_k=40, top_p=0.9, max_tokens=150):
         """Chat completion — same interface as ollama.chat().
 
         Args:
@@ -61,27 +61,29 @@ class LLMEngine:
             Dict with {'message': {'content': str}}
         """
         if stream:
-            return self._stream_chat(messages, temperature, top_k, top_p)
+            return self._stream_chat(messages, temperature, top_k, top_p, max_tokens)
         else:
-            return self._sync_chat(messages, temperature, top_k, top_p)
+            return self._sync_chat(messages, temperature, top_k, top_p, max_tokens)
 
-    def _sync_chat(self, messages, temperature, top_k, top_p):
+    def _sync_chat(self, messages, temperature, top_k, top_p, max_tokens=150):
         response = self.llm.create_chat_completion(
             messages=messages,
             temperature=temperature,
             top_k=top_k,
             top_p=top_p,
+            max_tokens=max_tokens,
             stream=False,
         )
         content = response['choices'][0]['message']['content']
         return {'message': {'content': content}}
 
-    def _stream_chat(self, messages, temperature, top_k, top_p):
+    def _stream_chat(self, messages, temperature, top_k, top_p, max_tokens=150):
         stream = self.llm.create_chat_completion(
             messages=messages,
             temperature=temperature,
             top_k=top_k,
             top_p=top_p,
+            max_tokens=max_tokens,
             stream=True,
         )
         for chunk in stream:
