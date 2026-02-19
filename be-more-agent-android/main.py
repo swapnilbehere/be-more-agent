@@ -194,6 +194,17 @@ class AgentScreen(Screen):
             # Hide camera overlay when returning to idle
             if state == BotStates.IDLE:
                 self.ids.camera_overlay.opacity = 0
+            # Update mic button to signal barge-in is available during SPEAKING/THINKING
+            btn = self.ids.mic_button
+            if state in (BotStates.SPEAKING, BotStates.THINKING):
+                btn.text = 'STOP'
+                btn.background_color = (0.9, 0.2, 0.2, 1)
+            elif state == BotStates.LISTENING:
+                btn.text = 'DONE'
+                btn.background_color = (0.2, 0.8, 0.3, 1)
+            else:
+                btn.text = 'MIC'
+                btn.background_color = (0.2, 0.6, 1, 1)
         Clock.schedule_once(_update)
 
     def append_text(self, text, newline=True):
@@ -220,14 +231,16 @@ class AgentScreen(Screen):
         - If SPEAKING/THINKING: interrupt
         """
         if self.current_state == BotStates.SPEAKING or self.current_state == BotStates.THINKING:
-            # Interrupt
+            # Barge-in: stop TTS/LLM and go straight into listening
             self.interrupted.set()
             self.thinking_sound_active.clear()
             with self.tts_queue_lock:
                 self.tts_queue.clear()
             if self.tts:
                 self.tts.stop()
-            self.set_state(BotStates.IDLE, "Interrupted.")
+            self.recording_active.set()
+            self.set_state(BotStates.LISTENING, "Listening...")
+            threading.Thread(target=self._listen_and_respond, daemon=True).start()
             return
 
         if self.current_state == BotStates.LISTENING and platform == 'android':
@@ -537,7 +550,8 @@ class AgentScreen(Screen):
             result = router.execute(action_data)
             self._handle_tool_result(result, text, img_path)
             self._wait_for_tts()
-            self.set_state(BotStates.IDLE, "Ready!")
+            if not self.interrupted.is_set():
+                self.set_state(BotStates.IDLE, "Ready!")
             return
 
         try:
@@ -601,14 +615,15 @@ class AgentScreen(Screen):
                 self.session_memory.append({"role": "assistant", "content": full_response})
 
             self._wait_for_tts()
-            self.set_state(BotStates.IDLE, "Ready!")
+            if not self.interrupted.is_set():
+                self.set_state(BotStates.IDLE, "Ready!")
 
         except Exception as e:
             print(f"[LLM Error] {e}", flush=True)
-            self.set_state(BotStates.ERROR, "Brain Freeze!")
-            # Auto-recover to IDLE after 3 seconds
-            time.sleep(3)
-            self.set_state(BotStates.IDLE, "Ready!")
+            if not self.interrupted.is_set():
+                self.set_state(BotStates.ERROR, "Brain Freeze!")
+                time.sleep(3)
+                self.set_state(BotStates.IDLE, "Ready!")
 
     def _handle_tool_result(self, result, original_text, img_path=None):
         """Handle action router results — ported from agent.py:715-775."""
@@ -676,7 +691,7 @@ class AgentScreen(Screen):
         while True:
             text = None
             with self.tts_queue_lock:
-                if self.tts_queue:
+                if self.tts_queue and not self.interrupted.is_set():
                     text = self.tts_queue.pop(0)
                     self.tts_active.set()
             if text:
